@@ -1,0 +1,49 @@
+# The catalog database as qone-infra composes it (Annex G): its own PostgreSQL instance with a
+# fixed image version, a volume and a health check, plus the Flyway runner behind the tooling
+# profile:  docker compose --env-file .env --profile tooling run --rm catalog-db-migrate
+services:
+  catalog-db:
+    image: postgres:16.4-alpine
+    container_name: catalog-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${CATALOG_DB_NAME:-catalog}
+      POSTGRES_USER: ${CATALOG_DB_USER:-catalog}
+      POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD:?CATALOG_DB_PASSWORD is required}
+    expose:
+      - "5432"
+    volumes:
+      - catalog-db-data:/var/lib/postgresql/data
+    networks:
+      - platform
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CATALOG_DB_USER:-catalog} -d ${CATALOG_DB_NAME:-catalog}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  catalog-db-migrate:
+    image: flyway/flyway:10.22.0
+    container_name: catalog-db-migrate
+    profiles: ["tooling"]
+    depends_on:
+      catalog-db:
+        condition: service_healthy
+    environment:
+      FLYWAY_URL: jdbc:postgresql://catalog-db:5432/${CATALOG_DB_NAME:-catalog}
+      FLYWAY_USER: ${CATALOG_DB_USER:-catalog}
+      FLYWAY_PASSWORD: ${CATALOG_DB_PASSWORD:?CATALOG_DB_PASSWORD is required}
+    volumes:
+      - ../migrations:/workspace/migrations:ro
+      - ../flyway.toml:/workspace/flyway.toml:ro
+    entrypoint: ["flyway", "-workingDirectory=/workspace", "-configFiles=/workspace/flyway.toml"]
+    command: ["migrate"]
+    networks:
+      - platform
+
+volumes:
+  catalog-db-data:
+
+networks:
+  platform:
+    external: true
