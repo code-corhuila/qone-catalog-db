@@ -1,0 +1,11 @@
+DROP INDEX IF EXISTS catalog.ix_idempotency_key_created_at;
+DROP INDEX IF EXISTS catalog.ix_outbox_unpublished;
+DROP INDEX IF EXISTS catalog.ix_seat_reservation_section_student;
+DROP INDEX IF EXISTS catalog.ix_seat_reservation_status_expires_at;
+DROP INDEX IF EXISTS catalog.ux_section_slot_section_day_start;
+DROP INDEX IF EXISTS catalog.ix_section_term_created_at;
+DROP INDEX IF EXISTS catalog.ix_section_professor_id_term;
+DROP INDEX IF EXISTS catalog.ux_section_subject_term_group;
+DROP INDEX IF EXISTS catalog.ix_subject_prerequisite_prerequisite_id;
+DROP INDEX IF EXISTS catalog.ix_subject_semester_created_at;
+DROP INDEX IF EXISTS catalog.ux_subject_code;
