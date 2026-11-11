@@ -18,6 +18,9 @@ fail() { echo "FAIL: $1" >&2; exit 1; }
 migrate() { $DC --profile tooling run --rm catalog-db-migrate "$@"; }
 psql_db() { $DC exec -T catalog-db psql -v ON_ERROR_STOP=1 -U "$CATALOG_DB_USER" -d "$CATALOG_DB_NAME" "$@"; }
 
+echo "== 0. seed e-mails on .test, no password hash in any migration (qone-docs#55)"
+sh scripts/check-seed-identities.sh
+
 echo "== 1. migrate from an empty database"
 $DC up -d catalog-db --wait
 migrate migrate | tee /tmp/migrate-1.log
@@ -54,6 +57,8 @@ echo "== 6. the seeds are idempotent"
 for f in migrations/02_dml/V*.sql; do [ -f "$f" ] || continue; psql_db < "$f" >/dev/null; psql_db < "$f" >/dev/null; done
 counts=$(psql_db -tA -c "SELECT (SELECT count(*) FROM catalog.subject) || '/' || (SELECT count(*) FROM catalog.subject_prerequisite) || '/' || (SELECT count(*) FROM catalog.section) || '/' || (SELECT count(*) FROM catalog.section_slot)")
 [ "$counts" = "14/5/11/18" ] || fail "expected 14 subjects, 5 prerequisites, 11 sections, 18 slots; found $counts"
+real=$(psql_db -tA -c "SELECT (SELECT count(*) FROM catalog.section WHERE professor_name !~ '^Profesor Demo [0-9]{2}\$')")
+[ "$real" = "0" ] || fail "$real seeded name(s) are not synthetic (Estudiante Demo NN / Profesor Demo NN, qone-docs#55)"
 public_tables=$(psql_db -tA -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'")
 [ "$public_tables" = "0" ] || fail "a table lives in public"
 
